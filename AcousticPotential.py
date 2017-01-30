@@ -443,3 +443,15 @@ class Simulate(object):
         acoustic_potential = (rms_v_mag / (3 * self.dens * self.c_air**2)) - ((self.dens * rms_pressure) / 2)
 
         return acoustic_potential
+
+    @staticmethod
+    def acoustophoretic_force(acoustic_potential):
+        """
+
+        :param acoustic_potential:
+        :return:
+        """
+
+        af = np.real(np.array(np.gradient(acoustic_potential)))
+
+        return af
