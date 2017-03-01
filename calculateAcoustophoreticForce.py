@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import AcousticPotential
 import calculateAcousticPotential
 import GUI
+from scipy.interpolate import griddata
 import os
 
 
@@ -63,20 +64,42 @@ def af_compare():
     fvd = cvd.copy()
     cvd['ref_shape'] = 'c'
     fvd['ref_shape'] = 'f'
-    c_af = calculate_acoustophoretic_force(cvd)[0]
-    f_af = calculate_acoustophoretic_force(fvd)[0]
+    c_af = calculate_acoustophoretic_force(cvd)
+    f_af = calculate_acoustophoretic_force(fvd)
+
+    def do_interpolate(vdict, af):
+
+        sim_obj = AcousticPotential.Simulate(vdict)
+
+        x = np.linspace(-sim_obj.ref_w/2, sim_obj.ref_w/2 + sim_obj.ss, 300)
+        y = np.linspace(0, sim_obj.h, 300)
+
+        xx, yy = np.meshgrid(x, y)
+
+        # noinspection PyTypeChecker
+        inted = griddata((xx, yy), af, (sim_obj.xi, sim_obj.yi), method='cubic')
+
+        ys = AcousticPotential.pos_on_semicircle(x, sim_obj.R, sim_obj.c_xy)
+        ymask = yy < ys
+        return inted
 
     fig, ax = plt.subplots(1, 2, True, True)
 
     mx = np.array([c_af, f_af]).max()
     mn = np.array([c_af, f_af]).min()
 
-    im = ax[0].imshow(c_af, origin='lower', vmax=mx, vmin=mn)
-    ax[1].imshow(f_af, origin='lower', vmax=mx, vmin=mn)
+    im = ax[0].imshow(c_af[0], origin='lower', vmax=mx, vmin=mn)
+    ax[1].imshow(f_af[0], origin='lower', vmax=mx, vmin=mn)
 
     fig.subplots_adjust(right=0.8)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
     fig.colorbar(im, cax=cbar_ax)
+
+    ax[0].set_title('Curved Reflector')
+    ax[1].set_title('Planar Reflector')
+
+    # ax[0].quiver(c_af[1][::5, ::5], c_af[0][::5, ::5])
+    # ax[1].quiver(f_af[1][::5, ::5], f_af[0][::5, ::5])
 
     plt.show()
 

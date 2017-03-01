@@ -52,7 +52,7 @@ class VariableSelectionBox(object):
                  text='Operating Frequency (f):').grid(row=3, column=1, sticky='e')
 
         self.freq_val = tk.IntVar()
-        self.freq_val.set(28000)
+        self.freq_val.set(40000)
 
         freq_entry = tk.Entry(self.root,
                               textvariable=self.freq_val,

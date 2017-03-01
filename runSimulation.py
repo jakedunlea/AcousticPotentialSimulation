@@ -22,10 +22,10 @@ def simulate(variables=None, save=True):
 
     sim_obj = AcousticPotential.Simulate(var_dict)
 
-    pressure_arrs = [sim_obj.pd(), sim_obj.pr1(),
-                     sim_obj.pr2()]  # , sim_obj.pr3()]
+    pressure_arrs = [sim_obj.pd_vec(), sim_obj.pr1(),
+                     sim_obj.pr2(), sim_obj.pr3()]
 
-    pressure_arr_titles = ['pd', 'pr1', 'pr2']  # , 'pr3']
+    pressure_arr_titles = ['pd', 'pr1', 'pr2', 'pr3']
 
     title_arr_dict = dict(zip(pressure_arr_titles, pressure_arrs))
 

@@ -19,6 +19,22 @@ def distance(xy1, xy2):
     return dist
 
 
+def dist_vec(x, y, cxy):
+    """
+    Returns a array of distance from cxy
+    :param x: x coordinate(s)
+    :param y: y coordinate(s)
+    :param cxy: tuple of coordinates (x0, y0) of position to calculate distance from
+    :return: distance(s) from cxy
+    """
+    x0 = cxy[0]
+    y0 = cxy[1]
+    x_dist = x - x0
+    y_dist = y - y0
+    dist = np.sqrt(x_dist ** 2 + y_dist ** 2)
+    return dist
+
+
 def pos_on_semicircle(x, r, cxy):
     """
     Calculates the corresponding y-coordinate of the point at the top of a circle given an x-coordinate
@@ -115,15 +131,20 @@ class Simulate(object):
             self.NI_dist_mat = self.ni_dist_mat()
             self.IM_dist_mat = self.im_dist_mat()
 
+            self.dist_NM_vec = np.array([dist_vec(self.xi, self.yi, n_coord) for n_coord in self.N_coords]).reshape(
+                [self.N, 300 * 300])
+
             self.A_n = self.n_coords()['A_n']
             self.A_i = self.i_coords()['A_i']
+
+            self.a_n = np.matrix(self.A_n)
 
         else:
             print('wtf')
 
     def nm_dist_mat(self):
         """
-        Produces a array of the distance between the points on the transducer face (n) and
+        Produces an array of the distance between the points on the transducer face (n) and
         the points in the space between the transducer and the reflector (m).
         :return: N x M array of floats
         """
@@ -234,6 +255,32 @@ class Simulate(object):
 
         return np.array(coords)
 
+    def pd_vec(self):
+        print('\n>>> Calculating Components of Direct Pressure Wave '
+              '\n >> {x} Components to calculate\n'.format(x=self.N))
+
+        dist_flat = self.dist_NM_vec  # (N x 90000)
+
+        press = self.a_n * np.divide(np.exp(-1j * self.k * dist_flat) * self.dens * self.c_air, (dist_flat * self.wl))
+        press = press.reshape([300, 300])
+
+        print('\n\n>>> Completed Calculation of Direct Pressure Wave')
+
+        if self.save:
+            save_loc = 'saved_arrays\\{d}-D\\pressure\\{rs}\\{h}m height\\{ss} step\\PD @ M-coords Complex.npy'.format(
+                rs=self.ref_shape,
+                h=round(self.h, 3),
+                ss=self.ss,
+                d=self.obs_dims
+            )
+
+            if not os.path.isdir(os.path.split(save_loc)[0]):
+                os.makedirs(os.path.split(save_loc)[0])
+
+            np.save(save_loc, press)
+
+        return press
+
     def pd(self):
         print('\n>>> Calculating Components of Direct Pressure Wave '
               '\n >> {x} Components to calculate\n'.format(x=(self.N * self.M)))
@@ -284,7 +331,7 @@ class Simulate(object):
                     press[n, i, m] = self.A_n[n] * self.A_i[i] * np.exp(-1j * self.k * dist) / np.array(dist)
                     bar.update(cnt)
                     cnt += 1
-        press *= ((self.dens * self.c_air / self.wl) * (1j / self.wl))
+        press *= (self.dens * self.c_air / self.wl) * (1j / self.wl)
         press = np.sum(press, 0)
         press = np.sum(press, 0)
         if self.obs_dims == 2:
@@ -407,7 +454,7 @@ class Simulate(object):
 
     @staticmethod
     def velocity_magnitude(vx, vy):
-        return np.sqrt(vx**2 + vy**2)
+        return np.sqrt(vx ** 2 + vy ** 2)
 
     def levitation_potential(self, input_p_field):
         """
@@ -440,7 +487,7 @@ class Simulate(object):
 
         rms_v_mag = self.velocity_magnitude(rms_vx, rms_vy)
 
-        acoustic_potential = (rms_v_mag / (3 * self.dens * self.c_air**2)) - ((self.dens * rms_pressure) / 2)
+        acoustic_potential = (rms_v_mag / (3 * self.dens * self.c_air ** 2)) - ((self.dens * rms_pressure) / 2)
 
         return acoustic_potential
 
@@ -455,3 +502,40 @@ class Simulate(object):
         af = np.real(np.array(np.gradient(acoustic_potential)))
 
         return af
+
+
+# if __name__ == "__main__":
+#     import GUI
+#     import time
+#     import matplotlib.pyplot as plt
+#     import numpy as np
+#
+#     vb = GUI.VariableSelectionBox()
+#     vd = vb.variables
+#
+#     sim = Simulate(vd)
+#
+#     t0 = time.time()
+#     old_p = sim.pd()
+#     t1 = time.time() - t0
+#
+#     t0 = time.time()
+#     new_p = sim.pd_vec()
+#     t2 = time.time() - t0
+#     new_p = new_p.reshape([300, 300])
+#
+#     print("Old Formula:", t1,
+#           "\nNew Formula:", t2)
+#
+#     vmx = np.real(np.array([new_p, old_p])).max()
+#     vmn = np.real(np.array([new_p, old_p])).min()
+#
+#     fig, axes = plt.subplots(1, 2, sharey=True)
+#
+#     axes[0].imshow(np.real(old_p), origin='lower', vmax=vmx, vmin=vmn)
+#     axes[1].imshow(np.real(new_p), origin='lower', vmax=vmx, vmin=vmn)
+#
+#     axes[0].set_title('Old Formula')
+#     axes[1].set_title('New Formula')
+#
+#     plt.show()
